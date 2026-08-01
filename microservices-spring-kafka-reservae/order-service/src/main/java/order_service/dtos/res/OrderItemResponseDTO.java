@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 public record OrderItemResponseDTO(
     String orderItemId,
     String sectorId,
+    String sectorName,
     String reservationId,
     TicketType ticketType,
     int quantity,

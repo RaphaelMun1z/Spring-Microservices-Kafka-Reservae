@@ -85,7 +85,7 @@ public class OrderController implements OrderContract {
 
     @Override
     @GetMapping("/v1/user/{userId}/orders")
-    public ResponseEntity<List<OrderSummaryResponseDTO>> findOrdersByUserId(
+    public ResponseEntity<List<OrderResponseDTO>> findOrdersByUserId(
         @PathVariable String userId
     ) {
         return ResponseEntity.ok(

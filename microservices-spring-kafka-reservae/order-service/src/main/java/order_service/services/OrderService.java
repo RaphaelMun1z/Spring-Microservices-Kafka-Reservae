@@ -21,6 +21,8 @@ import order_service.messaging.publisher.PaymentConfirmedNotificationPublisher;
 import order_service.messaging.publisher.PaymentFailedNotificationPublisher;
 import order_service.messaging.publisher.PaymentPendingNotificationPublisher;
 import order_service.proxy.eventCatalog.EventCatalogProxy;
+import order_service.proxy.eventCatalog.dto.EventDetailsResponseDTO;
+import order_service.proxy.eventCatalog.dto.EventSectorDetailsDTO;
 import order_service.proxy.eventCatalog.dto.SectorPricingResponseDTO;
 import order_service.repositories.OrderRepository;
 import org.slf4j.Logger;
@@ -31,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -301,24 +304,9 @@ public class OrderService {
     }
 
     public OrderResponseDTO findOrderById(String orderId) {
-        Order order = findOrderById(
-            orderId,
-            "Nenhum pedido encontrado."
-        );
-
-        List<OrderItemResponseDTO> orderItems = order.getItems()
-            .stream()
-            .map(this::toOrderItemResponseDTO)
-            .toList();
-
-        return new OrderResponseDTO(
-            order.getId(),
-            order.getUserId(),
-            order.getTotalAmount(),
-            order.getStatus(),
-            order.getPaymentUrl(),
-            orderItems
-        );
+        Order order = findOrderById(orderId, "Nenhum pedido encontrado.");
+        EventDetailsResponseDTO eventFound = eventCatalogProxy.findEventById(order.getEventId());
+        return toOrderResponseDTO(order, eventFound);
     }
 
     public List<OrderSummaryResponseDTO> findOrdersByEventId(String eventId) {
@@ -335,10 +323,19 @@ public class OrderService {
         return toOrderSummaryResponseDTO(order);
     }
 
-    public List<OrderSummaryResponseDTO> findOrdersByUserId(String userId) {
+    public List<OrderResponseDTO> findOrdersByUserId(String userId) {
+        Map<String, EventDetailsResponseDTO> eventsById = new HashMap<>();
+
         return orderRepository.findByUserId(userId)
             .stream()
-            .map(this::toOrderSummaryResponseDTO)
+            .map(order -> {
+                EventDetailsResponseDTO eventDetails = eventsById.computeIfAbsent(
+                    order.getEventId(),
+                    eventCatalogProxy::findEventById
+                );
+
+                return toOrderResponseDTO(order, eventDetails);
+            })
             .toList();
     }
 
@@ -512,15 +509,56 @@ public class OrderService {
         );
     }
 
-    private OrderItemResponseDTO toOrderItemResponseDTO(OrderItem orderItem) {
+    private String resolveSectorName(String sectorId, EventDetailsResponseDTO eventDetails) {
+        if (eventDetails.sectorsDetails() == null) {
+            return "Setor não informado";
+        }
+
+        return eventDetails.sectorsDetails()
+            .stream()
+            .filter(sector -> sector.sectorId().equals(sectorId))
+            .map(EventSectorDetailsDTO::sectorName)
+            .findFirst()
+            .orElse("Setor não informado");
+    }
+
+    private OrderItemResponseDTO toOrderItemResponseDTO(OrderItem orderItem, EventDetailsResponseDTO eventDetails) {
         return new OrderItemResponseDTO(
             orderItem.getId(),
             orderItem.getSectorId(),
+            resolveSectorName(orderItem.getSectorId(), eventDetails),
             orderItem.getReservationId(),
             orderItem.getTicketType(),
             orderItem.getQuantity(),
             orderItem.getAppliedPrice(),
             orderItem.getSubtotal()
+        );
+    }
+
+    private OrderResponseDTO toOrderResponseDTO(Order order, EventDetailsResponseDTO eventDetails) {
+        List<OrderItemResponseDTO> items = order.getItems()
+            .stream()
+            .map(item -> toOrderItemResponseDTO(item, eventDetails))
+            .toList();
+
+        return new OrderResponseDTO(
+            order.getId(),
+            order.getUserId(),
+
+            order.getEventId(),
+            eventDetails.title(),
+            eventDetails.eventDate(),
+            eventDetails.venueName(),
+            eventDetails.venueCity(),
+            eventDetails.venueState(),
+
+            order.getCreatedAt(),
+
+            order.getTotalAmount(),
+            order.getStatus(),
+            order.getPaymentUrl(),
+
+            items
         );
     }
 }
