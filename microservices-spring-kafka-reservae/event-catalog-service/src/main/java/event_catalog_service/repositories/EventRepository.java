@@ -82,8 +82,6 @@ public interface EventRepository extends JpaRepository<Event, String> {
                     CAST(:endDate AS timestamp) IS NULL
                     OR e.event_date <= CAST(:endDate AS timestamp)
                 )
-            
-            ORDER BY e.event_date ASC
             """,
         countQuery = """
             SELECT COUNT(e.id)
