@@ -77,16 +77,6 @@ services:
     volumes:
       - mongodb_notification_service_data:/data/db
 
-  #  keycloak:
-  #    image: quay.io/keycloak/keycloak:26.6.3
-  #
-  #    ports:
-  #      - "127.0.0.1:8080:8080"
-  #    environment:
-  #      KC_BOOTSTRAP_ADMIN_USERNAME: admin
-  #      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-  #    command: start-dev
-
   keycloak:
     image: quay.io/keycloak/keycloak:26.6.3
     restart: unless-stopped
@@ -102,6 +92,7 @@ services:
       - --spi-theme--cache-templates=false
     volumes:
       - ./infrastructure/keycloak/themes:/opt/keycloak/themes
+      - ./infrastructure/keycloak/backups:/opt/keycloak/backups
       - keycloak_data:/opt/keycloak/data
 
   zookeeper:
@@ -136,6 +127,11 @@ services:
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
     ports:
       - "8090:8080"
+
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    restart: unless-stopped
+    command: listen --api-key ${STRIPE_SECRET_KEY} --forward-to http://host.docker.internal:8400/payment-service/api/payments/webhooks/v1/stripe
 
 volumes:
   postgres_user_profile_service_data:
