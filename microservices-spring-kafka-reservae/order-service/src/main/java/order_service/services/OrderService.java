@@ -23,7 +23,8 @@ import order_service.messaging.publisher.PaymentPendingNotificationPublisher;
 import order_service.proxy.eventCatalog.EventCatalogProxy;
 import order_service.proxy.eventCatalog.dto.EventDetailsResponseDTO;
 import order_service.proxy.eventCatalog.dto.EventSectorDetailsDTO;
-import order_service.proxy.eventCatalog.dto.SectorPricingResponseDTO;
+import order_service.proxy.eventCatalog.dto.EventSectorPriceResponseDTO;
+import order_service.proxy.eventCatalog.dto.SectorsTicketPriceRequestDTO;
 import order_service.repositories.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +38,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("LoggingSimilarMessage")
@@ -107,17 +107,20 @@ public class OrderService {
             .distinct()
             .toList();
 
-        List<SectorPricingResponseDTO> sectorsPrices =
-            eventCatalogProxy.consultTicketPrices(
+        SectorsTicketPriceRequestDTO priceRequest =
+            new SectorsTicketPriceRequestDTO(
                 request.eventId(),
                 sectorsId
             );
 
-        Map<String, SectorPricingResponseDTO> pricesBySectorId =
+        List<EventSectorPriceResponseDTO> sectorsPrices =
+            eventCatalogProxy.consultTicketPrices(priceRequest);
+
+        Map<String, EventSectorPriceResponseDTO> pricesBySectorId =
             sectorsPrices.stream()
                 .collect(Collectors.toMap(
-                    SectorPricingResponseDTO::sectorId,
-                    Function.identity()
+                    EventSectorPriceResponseDTO::sectorId,
+                    sectorPrice -> sectorPrice
                 ));
 
         List<OrderItem> newOrderItems = request.items()
@@ -484,7 +487,7 @@ public class OrderService {
 
     private OrderItem toOrderItem(
         OrderItemRequestDTO item,
-        Map<String, SectorPricingResponseDTO> pricesBySectorId
+        Map<String, EventSectorPriceResponseDTO> pricesBySectorId
     ) {
         BigDecimal appliedPrice = resolveAppliedPrice(
             item,
@@ -501,9 +504,9 @@ public class OrderService {
 
     private BigDecimal resolveAppliedPrice(
         OrderItemRequestDTO item,
-        Map<String, SectorPricingResponseDTO> pricesBySectorId
+        Map<String, EventSectorPriceResponseDTO> pricesBySectorId
     ) {
-        SectorPricingResponseDTO pricing =
+        EventSectorPriceResponseDTO pricing =
             pricesBySectorId.get(item.sectorId());
 
         if (pricing == null) {

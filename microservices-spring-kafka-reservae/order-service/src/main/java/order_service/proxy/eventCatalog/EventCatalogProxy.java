@@ -2,7 +2,8 @@ package order_service.proxy.eventCatalog;
 
 import order_service.proxy.eventCatalog.config.EventCatalogFeignConfig;
 import order_service.proxy.eventCatalog.dto.EventDetailsResponseDTO;
-import order_service.proxy.eventCatalog.dto.SectorPricingResponseDTO;
+import order_service.proxy.eventCatalog.dto.EventSectorPriceResponseDTO;
+import order_service.proxy.eventCatalog.dto.SectorsTicketPriceRequestDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,9 +20,8 @@ public interface EventCatalogProxy {
     @GetMapping("/event-catalog-service/api/events/v1/{id}")
     EventDetailsResponseDTO findEventById(@PathVariable String id);
 
-    @PostMapping("/event-catalog-service/api/events/v1/{eventId}/sectors/prices")
-    List<SectorPricingResponseDTO> consultTicketPrices(
-        @PathVariable String eventId,
-        @RequestBody List<String> sectorsId
+    @PostMapping("/event-catalog-service/api/events/v1/tickets/price")
+    List<EventSectorPriceResponseDTO> consultTicketPrices(
+        @RequestBody SectorsTicketPriceRequestDTO request
     );
 }
