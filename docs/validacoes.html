@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="pt-BR">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Checklist de Validações — MatchPass</title>
+
+		<style>
+			:root {
+				--bg: #f8fafc;
+				--card: #ffffff;
+				--card-2: #f1f5f9;
+				--border: #e2e8f0;
+				--text: #0f172a;
+				--muted: #64748b;
+				--muted-2: #94a3b8;
+				--accent: #e11d48;
+				--accent-2: #fb7185;
+				--success: #16a34a;
+				--warning: #d97706;
+				--radius: 14px;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			body {
+				margin: 0;
+				min-height: 100vh;
+				background:
+					radial-gradient(
+						circle at top left,
+						rgba(225, 29, 72, 0.1),
+						transparent 32rem
+					),
+					radial-gradient(
+						circle at bottom right,
+						rgba(251, 113, 133, 0.1),
+						transparent 30rem
+					),
+					var(--bg);
+				color: var(--text);
+				font-family: Arial, Helvetica, sans-serif;
+				line-height: 1.5;
+			}
+
+			.container {
+				width: min(1100px, calc(100% - 32px));
+				margin: 0 auto;
+				padding: 32px 0 56px;
+			}
+
+			header {
+				margin-bottom: 24px;
+				padding: 24px;
+				border: 1px solid var(--border);
+				background: rgba(255, 255, 255, 0.9);
+				border-radius: var(--radius);
+				box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+			}
+
+			.eyebrow {
+				color: var(--accent);
+				font-size: 13px;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				margin-bottom: 8px;
+			}
+
+			h1 {
+				margin: 0 0 8px;
+				font-size: clamp(26px, 4vw, 40px);
+				line-height: 1.1;
+			}
+
+			.subtitle {
+				color: var(--muted);
+				margin: 0;
+				max-width: 850px;
+			}
+
+			.dashboard {
+				display: grid;
+				grid-template-columns: 1.4fr 0.9fr;
+				gap: 16px;
+				margin-bottom: 20px;
+			}
+
+			@media (max-width: 800px) {
+				.dashboard {
+					grid-template-columns: 1fr;
+				}
+			}
+
+			.panel {
+				background: rgba(255, 255, 255, 0.92);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				padding: 18px;
+				box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+			}
+
+			.progress-title {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				gap: 12px;
+				margin-bottom: 10px;
+				color: var(--muted);
+				font-size: 14px;
+			}
+
+			.progress-title strong {
+				color: var(--text);
+				font-size: 18px;
+			}
+
+			.progress-bar {
+				width: 100%;
+				height: 14px;
+				background: #e2e8f0;
+				border-radius: 999px;
+				overflow: hidden;
+				border: 1px solid #cbd5e1;
+			}
+
+			.progress-fill {
+				height: 100%;
+				width: 0%;
+				background: linear-gradient(
+					90deg,
+					var(--accent),
+					var(--accent-2)
+				);
+				transition: width 0.25s ease;
+			}
+
+			.actions {
+				display: flex;
+				gap: 10px;
+				flex-wrap: wrap;
+				margin-top: 14px;
+			}
+
+			button {
+				border: 1px solid var(--border);
+				background: var(--card);
+				color: var(--text);
+				padding: 10px 14px;
+				border-radius: 10px;
+				cursor: pointer;
+				font-weight: 700;
+				transition: 0.2s ease;
+			}
+
+			button:hover {
+				border-color: var(--accent);
+				color: var(--accent);
+				background: #fff1f2;
+			}
+
+			button.danger {
+				background: #fff1f2;
+				border-color: #fecdd3;
+				color: var(--accent);
+			}
+
+			.section {
+				background: rgba(255, 255, 255, 0.95);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				margin-bottom: 16px;
+				overflow: hidden;
+				box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+			}
+
+			.section-header {
+				padding: 18px;
+				background: linear-gradient(90deg, #fff1f2, #ffffff);
+				border-bottom: 1px solid var(--border);
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				gap: 16px;
+				cursor: pointer;
+			}
+
+			.section-header h2 {
+				margin: 0;
+				font-size: 19px;
+			}
+
+			.section-meta {
+				color: var(--muted);
+				font-size: 13px;
+				white-space: nowrap;
+			}
+
+			.section-body {
+				padding: 10px 18px 16px;
+				display: block;
+			}
+
+			.section.collapsed .section-body {
+				display: none;
+			}
+
+			.check-item {
+				display: grid;
+				grid-template-columns: 24px 1fr;
+				gap: 10px;
+				align-items: flex-start;
+				padding: 12px 0;
+				border-bottom: 1px solid var(--border);
+			}
+
+			.check-item:last-child {
+				border-bottom: none;
+			}
+
+			input[type="checkbox"] {
+				width: 18px;
+				height: 18px;
+				margin-top: 3px;
+				accent-color: var(--accent);
+				cursor: pointer;
+			}
+
+			label {
+				cursor: pointer;
+			}
+
+			.method {
+				color: var(--warning);
+				font-size: 13px;
+			}
+
+			.done label {
+				color: var(--muted-2);
+				text-decoration: line-through;
+			}
+
+			.small {
+				color: var(--muted);
+				font-size: 13px;
+			}
+
+			code {
+				color: var(--accent);
+				background: #fff1f2;
+				padding: 2px 5px;
+				border-radius: 5px;
+			}
+
+			.footer {
+				margin-top: 24px;
+				color: var(--muted);
+				text-align: center;
+				font-size: 13px;
+			}
+		</style>
+	</head>
+
+	<body>
+		<main class="container">
+			<header>
+				<div class="eyebrow">MatchPass</div>
+				<h1>Checklist de Validações</h1>
+				<p class="subtitle">
+					Checklist resumido com os principais pontos de validação por
+					serviço. O progresso é salvo automaticamente no navegador.
+				</p>
+			</header>
+
+			<section class="dashboard">
+				<div class="panel">
+					<div class="progress-title">
+						<strong>Progresso geral</strong>
+						<span id="generalProgressText">0 de 0 concluídos</span>
+					</div>
+
+					<div class="progress-bar">
+						<div
+							class="progress-fill"
+							id="generalProgressFill"
+						></div>
+					</div>
+
+					<div class="actions">
+						<button type="button" onclick="expandAll()">
+							Expandir tudo
+						</button>
+						<button type="button" onclick="collapseAll()">
+							Recolher tudo
+						</button>
+						<button
+							type="button"
+							class="danger"
+							onclick="resetProgress()"
+						>
+							Limpar progresso
+						</button>
+					</div>
+				</div>
+
+				<div class="panel">
+					<strong>Status</strong>
+					<p class="small">
+						Os itens marcados ficam salvos no
+						<code>localStorage</code>. Ao reabrir este HTML no mesmo
+						navegador, o progresso será mantido.
+					</p>
+				</div>
+			</section>
+
+			<div id="checklist"></div>
+
+			<p class="footer">
+				Checklist local — nenhum dado é enviado para servidor.
+			</p>
+		</main>
+
+		<script>
+			const STORAGE_KEY = "matchpass-validations-checklist-light-v1";
+
+			const checklistData = [
+				{
+					title: "1. identity-service / Keycloak",
+					items: [
+						"Validar autenticação do usuário via JWT. (SecurityFilterChain / JwtAuthenticationConverter)",
+						"Validar expiração, issuer e realm do token. (OAuth2 Resource Server)",
+						"Obter userId a partir do token, não do frontend. (Jwt.getSubject())",
+						"Validar permissões por role. (@PreAuthorize / hasRole)",
+						"Garantir que usuários acessem apenas seus próprios recursos. (validateOwner / findByIdAndUserId)",
+					],
+				},
+				{
+					title: "2. event-catalog-service",
+					items: [
+						"Validar se o eventId existe. (EventRepository.findById)",
+						"Validar se o evento está ativo, publicado e disponível para venda. (EventService.validateSalesStatus)",
+						"Validar se o sectorId existe e pertence ao evento. (EventSectorPricingService.validateEventSector)",
+						"Validar capacidade configurada do setor. (validateSectorCapacity)",
+						"Consultar e retornar preço oficial do setor. (consultTicketPrices / EventSectorPricingRepository)",
+					],
+				},
+				{
+					title: "3. inventory-service",
+					items: [
+						"Validar se existe inventário para eventId + sectorId. (findInventoryByEventAndSector)",
+						"Validar quantidade disponível: capacity - reservedQuantity - soldQuantity. (EventSectorInventory.getAvailableTicketsAmount)",
+						"Bloquear reserva quando a quantidade solicitada exceder a disponibilidade. (reserveTickets / inventory.reserve)",
+						"Impedir reserva duplicada para orderId + userId + eventId + sectorId. (TicketReservation.buildReservationId / existsById)",
+						"Liberar ou confirmar reservas conforme falha/pagamento aprovado. (releaseReservation / confirmReservationSale)",
+					],
+				},
+				{
+					title: "4. order-service",
+					items: [
+						"Validar request de checkout: eventId, itens, sectorId, ticketType e quantity. (processCheckout / validator)",
+						"Consultar preços oficiais no event-catalog-service. (EventCatalogProxy.consultTicketPrices)",
+						"Calcular appliedPrice e totalAmount no backend. (resolveAppliedPrice / calculateTotalAmount)",
+						"Criar pedido com status inicial correto. (OrderStatusEnum.PENDING)",
+						"Publicar solicitação de reserva após criar o pedido. (OrderReservationRequestedEvent)",
+					],
+				},
+				{
+					title: "5. payment-service",
+					items: [
+						"Validar se o pedido existe antes de pagar. (OrderProxy.validateOrderExists)",
+						"Validar se o pedido está aguardando pagamento. (validateOrderStatus)",
+						"Validar se o valor pago corresponde ao totalAmount do pedido. (validateAmount)",
+						"Evitar pagamento duplicado para o mesmo pedido. (existsByOrderIdAndStatus)",
+						"Publicar evento de pagamento aprovado ou falho. (PaymentApprovedEvent / PaymentFailedEvent)",
+					],
+				},
+				{
+					title: "6. ticket-service",
+					items: [
+						"Gerar ingressos somente após pagamento aprovado. (PaymentApprovedConsumer)",
+						"Validar se o pedido existe. (OrderProxy.validateOrderExists)",
+						"Impedir geração duplicada de ingressos para o mesmo orderId. (TicketRepository.existsByOrderId)",
+						"Gerar código/QR Code único por ingresso. (TicketCodeGenerator)",
+						"Associar cada ingresso a userId, eventId, sectorId e orderId. (TicketGenerationService)",
+					],
+				},
+				{
+					title: "7. notification-service",
+					items: [
+						"Validar se o evento recebido possui dados mínimos. (NotificationEventValidator)",
+						"Validar e-mail do destinatário. (EmailValidator)",
+						"Validar existência do template de notificação. (TemplateService.findTemplate)",
+						"Evitar envio duplicado em caso de retry. (NotificationLogRepository.existsByEventId)",
+						"Registrar status de envio da notificação. (NotificationLogRepository.save)",
+					],
+				},
+				{
+					title: "8. Validações transversais",
+					items: [
+						"Nenhum serviço deve confiar em userId, preço ou disponibilidade enviados pelo frontend.",
+						"Eventos Kafka repetidos não podem gerar reserva, pagamento, ingresso ou e-mail duplicados. (idempotency key / processed events)",
+						"Falha de pagamento deve liberar reserva. (PaymentFailedEvent / releaseReservation)",
+						"Pagamento aprovado deve confirmar reserva e permitir geração de ingresso. (PaymentApprovedEvent / confirmReservationSale)",
+						"Registrar logs com orderId, userId, eventId e motivo da falha. (logger / MDC)",
+					],
+				},
+			];
+
+			function getSavedProgress() {
+				try {
+					return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+				} catch {
+					return {};
+				}
+			}
+
+			function saveProgress(progress) {
+				localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+			}
+
+			function createId(sectionIndex, itemIndex) {
+				return `s${sectionIndex}-i${itemIndex}`;
+			}
+
+			function renderChecklist() {
+				const checklist = document.getElementById("checklist");
+				const savedProgress = getSavedProgress();
+
+				checklist.innerHTML = "";
+
+				checklistData.forEach((section, sectionIndex) => {
+					const sectionElement = document.createElement("section");
+					sectionElement.className = "section";
+					sectionElement.dataset.sectionIndex = sectionIndex;
+
+					sectionElement.innerHTML = `
+          <div class="section-header" onclick="toggleSection(${sectionIndex})">
+            <h2>${section.title}</h2>
+            <span class="section-meta" id="section-meta-${sectionIndex}">0 de ${section.items.length}</span>
+          </div>
+          <div class="section-body"></div>
+        `;
+
+					const body = sectionElement.querySelector(".section-body");
+
+					section.items.forEach((item, itemIndex) => {
+						const id = createId(sectionIndex, itemIndex);
+						const checked = !!savedProgress[id];
+
+						const itemElement = document.createElement("div");
+						itemElement.className = checked
+							? "check-item done"
+							: "check-item";
+
+						itemElement.innerHTML = `
+            <input
+              type="checkbox"
+              id="${id}"
+              ${checked ? "checked" : ""}
+              onchange="handleCheck('${id}')"
+            />
+            <label for="${id}">${formatItem(item)}</label>
+          `;
+
+						body.appendChild(itemElement);
+					});
+
+					checklist.appendChild(sectionElement);
+				});
+
+				updateProgress();
+			}
+
+			function formatItem(text) {
+				const methodMatch = text.match(/\(([^()]*)\)$/);
+
+				if (!methodMatch) {
+					return text;
+				}
+
+				const method = methodMatch[0];
+				const description = text.replace(method, "").trim();
+
+				return `${description} <span class="method">${method}</span>`;
+			}
+
+			function handleCheck(id) {
+				const savedProgress = getSavedProgress();
+				const checkbox = document.getElementById(id);
+				const itemElement = checkbox.closest(".check-item");
+
+				savedProgress[id] = checkbox.checked;
+
+				if (checkbox.checked) {
+					itemElement.classList.add("done");
+				} else {
+					itemElement.classList.remove("done");
+				}
+
+				saveProgress(savedProgress);
+				updateProgress();
+			}
+
+			function updateProgress() {
+				const allCheckboxes = Array.from(
+					document.querySelectorAll("input[type='checkbox']"),
+				);
+				const checkedCheckboxes = allCheckboxes.filter(
+					(checkbox) => checkbox.checked,
+				);
+
+				const total = allCheckboxes.length;
+				const checked = checkedCheckboxes.length;
+				const percentage =
+					total === 0 ? 0 : Math.round((checked / total) * 100);
+
+				document.getElementById("generalProgressText").textContent =
+					`${checked} de ${total} concluídos (${percentage}%)`;
+
+				document.getElementById("generalProgressFill").style.width =
+					`${percentage}%`;
+
+				checklistData.forEach((section, sectionIndex) => {
+					const sectionElement = document.querySelector(
+						`[data-section-index="${sectionIndex}"]`,
+					);
+					const sectionCheckboxes = Array.from(
+						sectionElement.querySelectorAll(
+							"input[type='checkbox']",
+						),
+					);
+					const sectionChecked = sectionCheckboxes.filter(
+						(checkbox) => checkbox.checked,
+					).length;
+					const sectionTotal = sectionCheckboxes.length;
+					const sectionPercentage =
+						sectionTotal === 0
+							? 0
+							: Math.round((sectionChecked / sectionTotal) * 100);
+
+					document.getElementById(
+						`section-meta-${sectionIndex}`,
+					).textContent =
+						`${sectionChecked} de ${sectionTotal} (${sectionPercentage}%)`;
+				});
+			}
+
+			function toggleSection(sectionIndex) {
+				const section = document.querySelector(
+					`[data-section-index="${sectionIndex}"]`,
+				);
+				section.classList.toggle("collapsed");
+			}
+
+			function expandAll() {
+				document.querySelectorAll(".section").forEach((section) => {
+					section.classList.remove("collapsed");
+				});
+			}
+
+			function collapseAll() {
+				document.querySelectorAll(".section").forEach((section) => {
+					section.classList.add("collapsed");
+				});
+			}
+
+			function resetProgress() {
+				const confirmReset = confirm(
+					"Tem certeza que deseja limpar todo o progresso salvo?",
+				);
+
+				if (!confirmReset) {
+					return;
+				}
+
+				localStorage.removeItem(STORAGE_KEY);
+
+				document
+					.querySelectorAll("input[type='checkbox']")
+					.forEach((checkbox) => {
+						checkbox.checked = false;
+						checkbox
+							.closest(".check-item")
+							.classList.remove("done");
+					});
+
+				updateProgress();
+			}
+
+			renderChecklist();
+		</script>
+	</body>
+</html>

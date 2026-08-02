@@ -1,6 +1,5 @@
 package user_profile_service.security;
 
-import org.jspecify.annotations.Nullable;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -11,25 +10,61 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-public class JWTConverter implements Converter<Jwt, AbstractAuthenticationToken> {
+public class JWTConverter
+    implements Converter<Jwt, AbstractAuthenticationToken> {
+
     @Override
-    public @Nullable AbstractAuthenticationToken convert(Jwt jwt) {
-        Map<String, Collection<String>> realmAccess = jwt.getClaim("realm_access");
+    public AbstractAuthenticationToken convert(Jwt jwt) {
+        Collection<String> realmRoles =
+            extractRealmRoles(jwt);
 
-        Collection<String> roles = (realmAccess != null)
-            ? realmAccess.getOrDefault(
-            "roles",
-            List.of()
-        )
-            : List.of();
-
-        var grants = roles.stream()
-            .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
-            .toList();
+        List<SimpleGrantedAuthority> authorities =
+            realmRoles.stream()
+                .map(String::trim)
+                .filter(role -> !role.isBlank())
+                .map(String::toUpperCase)
+                .map(role ->
+                    new SimpleGrantedAuthority(
+                        "ROLE_" + role
+                    )
+                )
+                .toList();
 
         return new JwtAuthenticationToken(
             jwt,
-            grants
+            authorities,
+            resolvePrincipalName(jwt)
         );
+    }
+
+    private Collection<String> extractRealmRoles(Jwt jwt) {
+        Map<String, Object> realmAccess =
+            jwt.getClaimAsMap("realm_access");
+
+        if (realmAccess == null) {
+            return List.of();
+        }
+
+        Object rolesClaim = realmAccess.get("roles");
+
+        if (!(rolesClaim instanceof Collection<?> roles)) {
+            return List.of();
+        }
+
+        return roles.stream()
+            .filter(String.class::isInstance)
+            .map(String.class::cast)
+            .toList();
+    }
+
+    private String resolvePrincipalName(Jwt jwt) {
+        String username =
+            jwt.getClaimAsString("preferred_username");
+
+        if (username != null && !username.isBlank()) {
+            return username;
+        }
+
+        return jwt.getSubject();
     }
 }

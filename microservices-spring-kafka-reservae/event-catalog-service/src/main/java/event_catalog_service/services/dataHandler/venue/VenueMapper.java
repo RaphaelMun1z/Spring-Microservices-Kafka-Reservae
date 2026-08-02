@@ -13,7 +13,8 @@ public class VenueMapper {
     public SectorResponseDTO toSectorResponseDTO(Sector sector) {
         return new SectorResponseDTO(
             sector.getId(),
-            sector.getName()
+            sector.getName(),
+            sector.getCapacity()
         );
     }
 

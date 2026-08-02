@@ -14,17 +14,10 @@ springdoc:
     path: /${spring.application.name}/v3/api-docs
 
 notification:
-  frontend-url: http://localhost:5500
-
   email:
-    sender-email: ${NOTIFICATION_EMAIL}
     sender-name: Reservae
-
-    assets:
-      payment-background-url: ${PAYMENT_BACKGROUND_URL}
-      payment-header-illustration-url: ${PAYMENT_HEADER_ILLUSTRATION_URL}
-      payment-footer-illustration-url: ${PAYMENT_FOOTER_ILLUSTRATION_URL}
-      instagram-icon-url: ${INSTAGRAM_ICON_URL}
+    sender-email: ${NOTIFICATION_EMAIL}
+    logo-classpath: classpath:email-assets/icon_complete_dark.png
 
 brevo:
   api:
@@ -45,3 +38,5 @@ reservae:
         notificacao-pagamento-confirmado: reservae.notification.payment-confirmed-requested.v1
         notificacao-pagamento-falhou: reservae.notification.payment-failed-requested.v1
         ingresso-gerado: reservae.ticket.generated.v1
+  security:
+    required-audience: reservae-api

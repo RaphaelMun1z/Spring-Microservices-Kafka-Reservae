@@ -24,6 +24,8 @@ reservae:
         sessao-pagamento-criada: reservae.payment.session-created.v1
         pagamento-aprovado: reservae.payment.approved.v1
         pagamento-falhou: reservae.payment.failed.v1
+  security:
+    required-audience: reservae-api
 
 springdoc:
   api-docs:

@@ -19,6 +19,6 @@ public class PaymentConfirmedNotificationConsumer {
         containerFactory = "paymentConfirmedNotificationKafkaListenerContainerFactory"
     )
     public void consume(PaymentConfirmedNotificationRequestedEvent event) {
-        notificationService.enviarCompraConfirmada(event);
+        notificationService.sendPaymentConfirmedEmail(event);
     }
 }

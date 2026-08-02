@@ -8,7 +8,7 @@ import order_service.dtos.res.OrderSummaryResponseDTO;
 import order_service.entities.Order;
 import order_service.entities.OrderItem;
 import order_service.entities.enums.OrderStatusEnum;
-import order_service.entities.enums.TicketType;
+import order_service.exceptions.models.BusinessException;
 import order_service.exceptions.models.NotFoundException;
 import order_service.messaging.event.inventory.InventoryReservationResultEvent;
 import order_service.messaging.event.order.OrderConfirmedEvent;
@@ -20,9 +20,10 @@ import order_service.messaging.publisher.OrderConfirmedPublisher;
 import order_service.messaging.publisher.PaymentConfirmedNotificationPublisher;
 import order_service.messaging.publisher.PaymentFailedNotificationPublisher;
 import order_service.messaging.publisher.PaymentPendingNotificationPublisher;
+import order_service.proxy.eventCatalog.dto.EventDetailsResponseDTO;
+import order_service.proxy.eventCatalog.dto.EventSectorDetailsDTO;
+import order_service.proxy.eventCatalog.dto.SectorPricingResponseDTO;
 import order_service.proxy.event_catalog.EventCatalogProxy;
-import order_service.proxy.event_catalog.dtos.EventSectorPriceResponseDTO;
-import order_service.proxy.event_catalog.dtos.SectorsTicketPriceRequestDTO;
 import order_service.repositories.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,9 +33,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("LoggingSimilarMessage")
@@ -82,44 +85,47 @@ public class OrderService {
 
     @Transactional
     public OrderSummaryResponseDTO processCheckout(CheckoutRequestDTO request) {
-        int itemsQuantity = request.items()
-            .stream()
-            .mapToInt(OrderItemRequestDTO::quantity)
-            .sum();
-
-        if (itemsQuantity <= 0) {
-            throw new IllegalArgumentException("Não é possível gerar um pedido sem itens!");
+        if (request.items() == null || request.items().isEmpty()) {
+            throw new BusinessException(
+                "O pedido deve possuir ao menos um item."
+            );
         }
 
-        // Validar existência do evento e setores
-        request.items().forEach(item -> {
-            String eventCatalogServicePort = eventCatalogProxy.validateEventSector(
-                request.eventId(),
-                item.sectorId()
-            );
-        });
+        boolean hasInvalidQuantity = request.items()
+            .stream()
+            .anyMatch(item -> item.quantity() <= 0);
 
-        // Consultar event-catalog-service para consultar o valor dos ingressos (evento/setor)
+        if (hasInvalidQuantity) {
+            throw new BusinessException(
+                "A quantidade de cada item deve ser maior que zero."
+            );
+        }
+
         List<String> sectorsId = request.items()
             .stream()
             .map(OrderItemRequestDTO::sectorId)
             .distinct()
             .toList();
-        SectorsTicketPriceRequestDTO sectorsTicketPriceRequestDTO = new SectorsTicketPriceRequestDTO(
-            request.eventId(),
-            sectorsId
-        );
-        List<EventSectorPriceResponseDTO> sectorsTicketPrices = eventCatalogProxy.consultTicketsPrice(sectorsTicketPriceRequestDTO);
 
-        // Gerar pedido
-        List<OrderItem> newOrderItems = getOrderItemsWithAppliedPrice(
-            request,
-            sectorsTicketPrices
-        );
+        List<SectorPricingResponseDTO> sectorsPrices =
+            eventCatalogProxy.consultTicketPrices(
+                request.eventId(),
+                sectorsId
+            );
 
-        BigDecimal totalAmount = newOrderItems.stream()
-            .map(OrderItem::getSubtotal)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Map<String, SectorPricingResponseDTO> pricesBySectorId =
+            sectorsPrices.stream()
+                .collect(Collectors.toMap(
+                    SectorPricingResponseDTO::sectorId,
+                    Function.identity()
+                ));
+
+        List<OrderItem> newOrderItems = request.items()
+            .stream()
+            .map(item -> toOrderItem(item, pricesBySectorId))
+            .toList();
+
+        BigDecimal totalAmount = calculateTotalAmount(newOrderItems);
 
         Order newOrder = new Order(
             request.eventId(),
@@ -129,10 +135,12 @@ public class OrderService {
         );
 
         newOrder.addItems(newOrderItems);
+
         Order savedOrder = orderRepository.save(newOrder);
 
         OrderReservationRequestedEvent event =
             orderEventMapper.toReservationRequestedEvent(savedOrder);
+
         applicationEventPublisher.publishEvent(event);
 
         logger.info(
@@ -145,7 +153,7 @@ public class OrderService {
 
     @Transactional
     public void handleInventoryReservationResult(InventoryReservationResultEvent event) {
-        Order order = findOrderEntityById(
+        Order order = findOrderById(
             event.orderId(),
             "Nenhum pedido encontrado para processar o resultado da reserva."
         );
@@ -187,7 +195,7 @@ public class OrderService {
 
     @Transactional
     public void attachPaymentSession(PaymentSessionCreatedEvent event) {
-        Order order = findOrderEntityById(
+        Order order = findOrderById(
             event.orderId(),
             "Nenhum pedido encontrado para vincular sessão de pagamento."
         );
@@ -215,7 +223,7 @@ public class OrderService {
 
     @Transactional
     public void confirmPayment(PaymentApprovedEvent event) {
-        Order order = findOrderEntityById(
+        Order order = findOrderById(
             event.orderId(),
             "Nenhum pedido encontrado para confirmar pagamento."
         );
@@ -271,7 +279,7 @@ public class OrderService {
 
     @Transactional
     public void failPayment(PaymentFailedEvent event) {
-        Order order = findOrderEntityById(
+        Order order = findOrderById(
             event.orderId(),
             "Nenhum pedido encontrado para registrar falha no pagamento."
         );
@@ -302,7 +310,7 @@ public class OrderService {
         String orderId,
         OrderStatusEnum orderStatusEnum
     ) {
-        Order order = findOrderEntityById(
+        Order order = findOrderById(
             orderId,
             "Nenhum pedido encontrado."
         );
@@ -314,23 +322,9 @@ public class OrderService {
     }
 
     public OrderResponseDTO findOrderById(String orderId) {
-        Order order = findOrderEntityById(
-            orderId,
-            "Nenhum pedido encontrado."
-        );
-
-        List<OrderItemResponseDTO> orderItems = order.getItems()
-            .stream()
-            .map(this::toOrderItemResponseDTO)
-            .toList();
-
-        return new OrderResponseDTO(
-            order.getId(),
-            order.getTotalAmount(),
-            order.getStatus(),
-            order.getPaymentUrl(),
-            orderItems
-        );
+        Order order = findOrderById(orderId, "Nenhum pedido encontrado.");
+        EventDetailsResponseDTO eventFound = eventCatalogProxy.findEventById(order.getEventId());
+        return toOrderResponseDTO(order, eventFound);
     }
 
     public List<OrderSummaryResponseDTO> findOrdersByEventId(String eventId) {
@@ -347,10 +341,19 @@ public class OrderService {
         return toOrderSummaryResponseDTO(order);
     }
 
-    public List<OrderSummaryResponseDTO> findOrdersByUserId(String userId) {
+    public List<OrderResponseDTO> findOrdersByUserId(String userId) {
+        Map<String, EventDetailsResponseDTO> eventsById = new HashMap<>();
+
         return orderRepository.findByUserId(userId)
             .stream()
-            .map(this::toOrderSummaryResponseDTO)
+            .map(order -> {
+                EventDetailsResponseDTO eventDetails = eventsById.computeIfAbsent(
+                    order.getEventId(),
+                    eventCatalogProxy::findEventById
+                );
+
+                return toOrderResponseDTO(order, eventDetails);
+            })
             .toList();
     }
 
@@ -474,86 +477,61 @@ public class OrderService {
         return FRONTEND_ORDER_URL + order.getId();
     }
 
-    private Order findOrderEntityById(String orderId, String message) {
+    private Order findOrderById(String orderId, String message) {
         return orderRepository.findById(orderId)
             .orElseThrow(() -> new NotFoundException(message));
     }
 
-    private List<OrderItem> getOrderItemsWithAppliedPrice(
-        CheckoutRequestDTO request,
-        List<EventSectorPriceResponseDTO> sectorsTicketPrices
+    private OrderItem toOrderItem(
+        OrderItemRequestDTO item,
+        Map<String, SectorPricingResponseDTO> pricesBySectorId
     ) {
-        Map<String, EventSectorPriceResponseDTO> priceBySectorId = sectorsTicketPrices.stream()
-            .collect(Collectors.toMap(
-                EventSectorPriceResponseDTO::sectorId,
-                sectorPrice -> sectorPrice
-            ));
+        BigDecimal appliedPrice = resolveAppliedPrice(
+            item,
+            pricesBySectorId
+        );
 
-        return request.items()
-            .stream()
-            .map(item -> new OrderItem(
-                item.sectorId(),
-                item.ticketType(),
-                item.quantity(),
-                resolveAppliedPrice(item, priceBySectorId)
-            ))
-            .toList();
+        return new OrderItem(
+            item.sectorId(),
+            item.ticketType(),
+            item.quantity(),
+            appliedPrice
+        );
     }
 
     private BigDecimal resolveAppliedPrice(
         OrderItemRequestDTO item,
-        Map<String, EventSectorPriceResponseDTO> priceBySectorId
+        Map<String, SectorPricingResponseDTO> pricesBySectorId
     ) {
-        EventSectorPriceResponseDTO sectorPrice = priceBySectorId.get(item.sectorId());
+        SectorPricingResponseDTO pricing =
+            pricesBySectorId.get(item.sectorId());
 
-        if (sectorPrice == null) {
-            throw new IllegalArgumentException(
-                "Preço não encontrado para o setor informado: " + item.sectorId()
+        if (pricing == null) {
+            throw new NotFoundException(
+                "Preço não encontrado para o setor informado: "
+                    + item.sectorId()
             );
         }
 
-        BigDecimal unitPrice = resolveUnitPrice(
-            item.ticketType(),
-            sectorPrice
-        );
-
-        if (unitPrice == null) {
-            throw new IllegalArgumentException(
-                "Preço não configurado para o tipo de ingresso informado: " + item.ticketType()
-            );
-        }
-
-        return unitPrice;
-    }
-
-    private BigDecimal calculateItemSubtotal(
-        OrderItemRequestDTO item,
-        Map<String, EventSectorPriceResponseDTO> priceBySectorId
-    ) {
-        EventSectorPriceResponseDTO sectorPrice = priceBySectorId.get(item.sectorId());
-
-        if (sectorPrice == null) {
-            throw new IllegalArgumentException(
-                "Preço não encontrado para o setor informado: " + item.sectorId()
-            );
-        }
-
-        BigDecimal unitPrice = resolveUnitPrice(
-            item.ticketType(),
-            sectorPrice
-        );
-
-        return unitPrice.multiply(BigDecimal.valueOf(item.quantity()));
-    }
-
-    private BigDecimal resolveUnitPrice(
-        TicketType ticketType,
-        EventSectorPriceResponseDTO sectorPrice
-    ) {
-        return switch (ticketType) {
-            case FULL_TICKET_PRICE -> sectorPrice.basePrice();
-            case HALF_TICKET_PRICE -> sectorPrice.halfPrice();
+        BigDecimal appliedPrice = switch (item.ticketType()) {
+            case FULL_TICKET_PRICE -> pricing.basePrice();
+            case HALF_TICKET_PRICE -> pricing.halfPrice();
         };
+
+        if (appliedPrice == null) {
+            throw new BusinessException(
+                "Preço não configurado para o tipo de ingresso informado: "
+                    + item.ticketType()
+            );
+        }
+
+        return appliedPrice;
+    }
+
+    private BigDecimal calculateTotalAmount(List<OrderItem> items) {
+        return items.stream()
+            .map(OrderItem::getSubtotal)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private OrderSummaryResponseDTO toOrderSummaryResponseDTO(Order order) {
@@ -565,15 +543,56 @@ public class OrderService {
         );
     }
 
-    private OrderItemResponseDTO toOrderItemResponseDTO(OrderItem orderItem) {
+    private String resolveSectorName(String sectorId, EventDetailsResponseDTO eventDetails) {
+        if (eventDetails.sectorsDetails() == null) {
+            return "Setor não informado";
+        }
+
+        return eventDetails.sectorsDetails()
+            .stream()
+            .filter(sector -> sector.sectorId().equals(sectorId))
+            .map(EventSectorDetailsDTO::sectorName)
+            .findFirst()
+            .orElse("Setor não informado");
+    }
+
+    private OrderItemResponseDTO toOrderItemResponseDTO(OrderItem orderItem, EventDetailsResponseDTO eventDetails) {
         return new OrderItemResponseDTO(
             orderItem.getId(),
             orderItem.getSectorId(),
+            resolveSectorName(orderItem.getSectorId(), eventDetails),
             orderItem.getReservationId(),
             orderItem.getTicketType(),
             orderItem.getQuantity(),
             orderItem.getAppliedPrice(),
             orderItem.getSubtotal()
+        );
+    }
+
+    private OrderResponseDTO toOrderResponseDTO(Order order, EventDetailsResponseDTO eventDetails) {
+        List<OrderItemResponseDTO> items = order.getItems()
+            .stream()
+            .map(item -> toOrderItemResponseDTO(item, eventDetails))
+            .toList();
+
+        return new OrderResponseDTO(
+            order.getId(),
+            order.getUserId(),
+
+            order.getEventId(),
+            eventDetails.title(),
+            eventDetails.eventDate(),
+            eventDetails.venueName(),
+            eventDetails.venueCity(),
+            eventDetails.venueState(),
+
+            order.getCreatedAt(),
+
+            order.getTotalAmount(),
+            order.getStatus(),
+            order.getPaymentUrl(),
+
+            items
         );
     }
 }

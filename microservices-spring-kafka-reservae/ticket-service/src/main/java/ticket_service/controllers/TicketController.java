@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import ticket_service.controllers.contracts.TicketContract;
-import ticket_service.entities.Ticket;
+import ticket_service.dtos.res.TicketResponseDTO;
 import ticket_service.services.TicketService;
 
 import java.util.List;
@@ -24,7 +24,7 @@ public class TicketController implements TicketContract {
 
     @Override
     @GetMapping("/v1/{id}")
-    public ResponseEntity<Ticket> getTicketById(String id) {
+    public ResponseEntity<TicketResponseDTO> getTicketById(String id) {
         return ResponseEntity.ok(
             ticketService.findById(id)
         );
@@ -32,7 +32,7 @@ public class TicketController implements TicketContract {
 
     @Override
     @GetMapping("/v1/user/{userId}")
-    public ResponseEntity<List<Ticket>> getTicketsByUser(String userId) {
+    public ResponseEntity<List<TicketResponseDTO>> getTicketsByUser(String userId) {
         return ResponseEntity.ok(
             ticketService.findByUserId(userId)
         );
@@ -40,7 +40,7 @@ public class TicketController implements TicketContract {
 
     @Override
     @GetMapping("/v1/event/{eventId}")
-    public ResponseEntity<Page<Ticket>> getTicketsByEvent(
+    public ResponseEntity<Page<TicketResponseDTO>> getTicketsByEvent(
         String eventId,
         Pageable pageable
     ) {

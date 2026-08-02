@@ -1,11 +1,11 @@
 package notification_service.templates;
 
 public record EmailItem(
-    String imagemUrl,
-    String nome,
-    String descricao,
-    int quantidade,
-    String precoUnitario,
-    String precoTotal
+    String imageUrl,
+    String eventName,
+    String sectorName,
+    Integer quantity,
+    String unitPrice,
+    String subtotal
 ) {
 }

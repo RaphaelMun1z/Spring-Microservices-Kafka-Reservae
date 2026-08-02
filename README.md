@@ -1,8 +1,8 @@
 # Reservae
 
 <div align="center">
-  <a href="https://github.com/RaphaelMun1z/ReservaeProject/releases">
-    <img src="https://img.shields.io/github/v/release/RaphaelMun1z/ReservaeProject?include_prereleases&label=backend&style=for-the-badge&color=6C63FF" alt="Última versão do backend">
+  <a href="https://github.com/RaphaelMun1z/Spring-Microservices-Kafka-Reservae/releases">
+    <img src="https://img.shields.io/github/v/release/RaphaelMun1z/Spring-Microservices-Kafka-Reservae?include_prereleases&label=backend&style=for-the-badge&color=6C63FF" alt="Última versão do backend">
   </a>
   <img src="https://img.shields.io/badge/status-MVP%20funcional-22C55E?style=for-the-badge" alt="Status: MVP funcional">
   <img src="https://img.shields.io/badge/Java-21-E76F00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 21">

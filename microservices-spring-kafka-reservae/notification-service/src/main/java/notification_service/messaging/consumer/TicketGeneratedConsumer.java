@@ -28,6 +28,6 @@ public class TicketGeneratedConsumer {
             event.items().size()
         );
 
-        notificationService.enviarIngressosGerados(event);
+        notificationService.sendTicketsGeneratedEmail(event);
     }
 }

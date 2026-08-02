@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/user-profile-service/api/foo-bar")
+@RequestMapping("/user-profile-service/api/profiles/foo-bar")
 public class FooBarController {
     @GetMapping
     @PreAuthorize("hasRole('CUSTOMER')")

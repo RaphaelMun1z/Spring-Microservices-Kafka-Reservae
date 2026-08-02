@@ -91,7 +91,7 @@ public class AccessService {
     public Page<AccessLog> findLogs(
         String eventId,
         String gateId,
-        String result,
+        AccessStatusEnum result,
         Pageable pageable
     ) {
         return accessLogRepository.findLogsWithFilters(

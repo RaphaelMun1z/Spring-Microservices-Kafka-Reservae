@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import ticket_service.dtos.req.ValidateAccessRequestDTO;
 import ticket_service.dtos.res.AccessValidationResponseDTO;
 import ticket_service.entities.AccessLog;
+import ticket_service.entities.enums.AccessStatusEnum;
 
 @Tag(
     name = "Access Validation Endpoint",
@@ -27,7 +28,7 @@ public interface AccessContract {
     ResponseEntity<Page<AccessLog>> getAccessLogs(
         @RequestParam(required = false) String eventId,
         @RequestParam(required = false) String gateId,
-        @RequestParam(required = false) String result,
+        @RequestParam(required = false) AccessStatusEnum result,
         Pageable pageable
     );
 }

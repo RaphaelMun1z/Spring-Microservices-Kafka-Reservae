@@ -7,8 +7,6 @@ import org.springframework.data.redis.core.RedisHash;
 import org.springframework.data.redis.core.TimeToLive;
 import org.springframework.data.redis.core.index.Indexed;
 
-import java.util.UUID;
-
 @RedisHash("ticket_reservation")
 public class TicketReservation {
 
@@ -49,7 +47,7 @@ public class TicketReservation {
         validateQuantity(quantity);
         validateTimeToLive(timeToLiveSeconds);
 
-        this.reservationId = UUID.randomUUID().toString();
+        this.reservationId = buildReservationId(orderId, userId, eventId, sectorId);
         this.eventId = eventId;
         this.sectorId = sectorId;
         this.userId = userId;
@@ -57,6 +55,16 @@ public class TicketReservation {
         this.quantity = quantity;
         this.reservationStatus = ReservationStatusEnum.RESERVED;
         this.timeToLive = timeToLiveSeconds;
+    }
+
+    public static String buildReservationId(
+        String orderId,
+        String userId,
+        String eventId,
+        String sectorId
+    ) {
+        return "order:%s:user:%s:event:%s:sector:%s"
+            .formatted(orderId, userId, eventId, sectorId);
     }
 
     public String getReservationId() {

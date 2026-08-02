@@ -37,3 +37,5 @@ reservae:
         notificacao-pagamento-confirmado: reservae.notification.payment-confirmed-requested.v1
         notificacao-pagamento-falhou: reservae.notification.payment-failed-requested.v1
         pedido-confirmado: reservae.order.confirmed.v1
+  security:
+    required-audience: reservae-api

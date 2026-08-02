@@ -12,3 +12,7 @@ spring:
 springdoc:
   api-docs:
     path: /${spring.application.name}/v3/api-docs
+
+reservae:
+  security:
+    required-audience: reservae-api

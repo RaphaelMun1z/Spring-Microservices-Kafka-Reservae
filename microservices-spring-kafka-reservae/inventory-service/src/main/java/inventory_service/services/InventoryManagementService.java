@@ -1,6 +1,5 @@
 package inventory_service.services;
 
-import inventory_service.dtos.req.ReservationItemCommandRequestDTO;
 import inventory_service.dtos.res.EventSectorInventoryResponseDTO;
 import inventory_service.dtos.res.ReservationStatusResponseDTO;
 import inventory_service.dtos.res.TicketReservationResponseDTO;
@@ -11,6 +10,7 @@ import inventory_service.environment.InstanceInformationService;
 import inventory_service.exceptions.models.BusinessException;
 import inventory_service.exceptions.models.NotFoundException;
 import inventory_service.proxy.eventCatalog.EventCatalogProxy;
+import inventory_service.proxy.order.OrderProxy;
 import inventory_service.repositories.EventSectorInventoryRepository;
 import inventory_service.repositories.TicketReservationRepository;
 import org.slf4j.Logger;
@@ -21,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -34,18 +33,21 @@ public class InventoryManagementService {
     private final EventSectorInventoryRepository eventSectorInventoryRepository;
     private final TicketReservationRepository ticketReservationRepository;
     private final EventCatalogProxy eventCatalogProxy;
+    private final OrderProxy orderProxy;
 
     public InventoryManagementService(
         InstanceInformationService informationService,
         EventSectorInventoryRepository eventSectorInventoryRepository,
         TicketReservationRepository ticketReservationRepository,
         EventCatalogProxy eventCatalogProxy,
+        OrderProxy orderProxy,
         @Value("${reservae.config.reservation.ttl-minutes}") long reservationTtlMinutes
     ) {
         this.informationService = informationService;
         this.eventSectorInventoryRepository = eventSectorInventoryRepository;
         this.ticketReservationRepository = ticketReservationRepository;
         this.eventCatalogProxy = eventCatalogProxy;
+        this.orderProxy = orderProxy;
         this.reservationTtlMinutes = reservationTtlMinutes;
     }
 
@@ -55,6 +57,12 @@ public class InventoryManagementService {
         String sectorId,
         int capacity
     ) {
+        // Validar existência de Evento/Setor
+        eventCatalogProxy.validateEventSector(
+            eventId,
+            sectorId
+        );
+
         if (capacity <= 0) {
             throw new BusinessException("A capacidade do setor deve ser maior que zero.");
         }
@@ -142,56 +150,6 @@ public class InventoryManagementService {
         );
 
         return toReservationResponse(savedReservation);
-    }
-
-    @Transactional
-    public List<String> reserveOrderItems(
-        String orderId,
-        String userId,
-        List<ReservationItemCommandRequestDTO> items
-    ) {
-        if (items == null || items.isEmpty()) {
-            throw new BusinessException("O pedido não possui ingressos para reservar.");
-        }
-
-        List<String> createdReservationIds = new ArrayList<>();
-
-        try {
-            for (ReservationItemCommandRequestDTO item : items) {
-                TicketReservationResponseDTO reservation = reserveTickets(
-                    orderId,
-                    userId,
-                    item.eventId(),
-                    item.sectorId(),
-                    item.quantity()
-                );
-
-                createdReservationIds.add(reservation.reservationId());
-            }
-
-            return List.copyOf(createdReservationIds);
-        } catch (RuntimeException exception) {
-            logger.error(
-                "Falha ao reservar itens do pedido {}. Liberando {} reserva(s). Motivo: {}",
-                orderId,
-                createdReservationIds.size(),
-                exception.getMessage()
-            );
-
-            for (String reservationId : createdReservationIds) {
-                try {
-                    releaseReservation(reservationId);
-                } catch (RuntimeException releaseException) {
-                    logger.error(
-                        "Falha ao liberar a reserva {} durante compensação. Motivo: {}",
-                        reservationId,
-                        releaseException.getMessage()
-                    );
-                }
-            }
-
-            throw exception;
-        }
     }
 
     @Transactional
@@ -400,6 +358,9 @@ public class InventoryManagementService {
         if (orderId == null || orderId.isBlank()) {
             throw new BusinessException("O ID do pedido é obrigatório.");
         }
+
+        // Validar se Pedido existe
+        orderProxy.validateOrder(orderId);
 
         if (userId == null || userId.isBlank()) {
             throw new BusinessException("O ID do usuário é obrigatório.");

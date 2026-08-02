@@ -150,9 +150,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     ) {
         ExceptionResponse exceptionResponse = new ExceptionResponse(
             LocalDateTime.now().toString(),
-            List.of("Formato inválido para datas. Use yyyy-MM-dd."),
+            List.of("Filtro inválido para consulta. Verifique os parâmetros informados."),
             request.getDescription(false)
         );
+
         return new ResponseEntity<>(
             exceptionResponse,
             HttpStatus.BAD_REQUEST

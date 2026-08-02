@@ -9,6 +9,7 @@ import ticket_service.controllers.contracts.AccessContract;
 import ticket_service.dtos.req.ValidateAccessRequestDTO;
 import ticket_service.dtos.res.AccessValidationResponseDTO;
 import ticket_service.entities.AccessLog;
+import ticket_service.entities.enums.AccessStatusEnum;
 import ticket_service.services.AccessService;
 
 @RestController
@@ -36,7 +37,7 @@ public class AccessController implements AccessContract {
     public ResponseEntity<Page<AccessLog>> getAccessLogs(
         @RequestParam(required = false) String eventId,
         @RequestParam(required = false) String gateId,
-        @RequestParam(required = false) String result,
+        @RequestParam(required = false) AccessStatusEnum result,
         Pageable pageable
     ) {
         return ResponseEntity.ok(

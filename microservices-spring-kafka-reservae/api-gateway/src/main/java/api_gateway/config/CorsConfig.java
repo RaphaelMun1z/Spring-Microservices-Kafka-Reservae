@@ -15,7 +15,9 @@ public class CorsConfig {
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
 
-        corsConfiguration.setAllowedOriginPatterns(List.of("*"));
+        corsConfiguration.setAllowedOrigins(List.of(
+            "http://localhost:4200"
+        ));
 
         corsConfiguration.setAllowedMethods(List.of(
             "GET",
@@ -29,9 +31,12 @@ public class CorsConfig {
 
         corsConfiguration.setAllowedHeaders(List.of("*"));
 
-        corsConfiguration.setExposedHeaders(List.of("*"));
+        corsConfiguration.setExposedHeaders(List.of(
+            "Location",
+            "Content-Disposition"
+        ));
 
-        corsConfiguration.setAllowCredentials(false);
+        corsConfiguration.setAllowCredentials(true);
 
         corsConfiguration.setMaxAge(3600L);
 

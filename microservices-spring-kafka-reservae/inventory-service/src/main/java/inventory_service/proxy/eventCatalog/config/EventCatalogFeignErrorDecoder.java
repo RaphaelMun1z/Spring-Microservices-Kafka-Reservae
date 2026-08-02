@@ -7,7 +7,7 @@ import feign.codec.ErrorDecoder;
 import inventory_service.exceptions.models.BusinessException;
 import inventory_service.exceptions.models.ExternalServiceException;
 import inventory_service.exceptions.models.NotFoundException;
-import inventory_service.proxy.eventCatalog.dtos.EventCatalogErrorResponseDTO;
+import inventory_service.proxy.ErrorResponseDTO;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -47,9 +47,9 @@ public class EventCatalogFeignErrorDecoder implements ErrorDecoder {
                 return "O serviço de catálogo de eventos recusou a operação.";
             }
 
-            EventCatalogErrorResponseDTO errorResponse = objectMapper.readValue(
+            ErrorResponseDTO errorResponse = objectMapper.readValue(
                 body,
-                EventCatalogErrorResponseDTO.class
+                ErrorResponseDTO.class
             );
 
             List<String> messages = errorResponse.message();

@@ -64,7 +64,7 @@ public interface OrderContract {
     );
 
     @Operation(summary = "Listar todos os pedidos de um usuário")
-    ResponseEntity<List<OrderSummaryResponseDTO>> findOrdersByUserId(
+    ResponseEntity<List<OrderResponseDTO>> findOrdersByUserId(
         @Parameter(
             description = "Identificador único do usuário comprador",
             example = "550e8400-e29b-41d4-a716-446655440002"

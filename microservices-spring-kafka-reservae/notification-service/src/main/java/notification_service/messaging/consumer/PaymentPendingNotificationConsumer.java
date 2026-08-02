@@ -18,6 +18,6 @@ public class PaymentPendingNotificationConsumer {
         containerFactory = "paymentPendingNotificationKafkaListenerContainerFactory"
     )
     public void consume(PaymentPendingNotificationRequestedEvent event) {
-        notificationService.enviarPagamentoPendente(event);
+        notificationService.sendPaymentPendingEmail(event);
     }
 }

@@ -2,12 +2,10 @@ package event_catalog_service.services;
 
 import event_catalog_service.dtos.query.EventDetailsProjection;
 import event_catalog_service.dtos.req.CreateEventRequestDTO;
+import event_catalog_service.dtos.req.EventFilterRequestDTO;
 import event_catalog_service.dtos.req.SectorPricingRequestDTO;
 import event_catalog_service.dtos.req.SectorsTicketPriceRequestDTO;
-import event_catalog_service.dtos.res.EventDetailsResponseDTO;
-import event_catalog_service.dtos.res.EventSectorDetailsDTO;
-import event_catalog_service.dtos.res.EventSectorPriceResponseDTO;
-import event_catalog_service.dtos.res.SectorPricingResponseDTO;
+import event_catalog_service.dtos.res.*;
 import event_catalog_service.entities.Event;
 import event_catalog_service.entities.EventSectorPricing;
 import event_catalog_service.entities.Venue;
@@ -18,6 +16,8 @@ import event_catalog_service.services.dataHandler.event.EventMapper;
 import event_catalog_service.services.dataHandler.event.EventQueryService;
 import event_catalog_service.services.dataHandler.event.EventValidator;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -43,6 +43,31 @@ public class EventCatalogService {
         this.eventQuery = eventQuery;
         this.mapper = mapper;
         this.validator = validator;
+    }
+
+    public Page<EventSummaryResponseDTO> findEventsFiltered(
+        EventFilterRequestDTO filter,
+        Pageable pageable
+    ) {
+        validateDateRange(filter);
+
+        String search = normalizeFilter(filter.search());
+        String city = normalizeFilter(filter.city());
+        String state = normalizeFilter(filter.state());
+
+        String status = filter.status() == null
+            ? null
+            : filter.status().name();
+
+        return eventRepository.findEventsWithFilters(
+            search,
+            city,
+            state,
+            status,
+            filter.startDate(),
+            filter.endDate(),
+            pageable
+        ).map(mapper::toEventSummaryResponseDTO);
     }
 
     public EventDetailsResponseDTO findEventById(String eventId) {
@@ -137,5 +162,40 @@ public class EventCatalogService {
                 );
             }
         ).toList();
+    }
+
+    public List<SectorPricingResponseDTO> consultSectorsTicketPrices(String eventId, List<String> sectorsId) {
+        return sectorsId.stream().map(sectorId -> {
+            EventSectorDetailsDTO sectorDetails = eventSectorPricingRepository.findEventSectorDetailsByEventIdAndSectorId(eventId, sectorId)
+                .orElseThrow(() -> new NotFoundException("Setor não encontrado no evento"));
+            return new SectorPricingResponseDTO(
+                sectorDetails.sectorId(),
+                sectorDetails.sectorName(),
+                sectorDetails.sectorBasePrice(),
+                sectorDetails.sectorHalfPrice()
+            );
+        }).toList();
+    }
+
+    private void validateDateRange(
+        EventFilterRequestDTO filter
+    ) {
+        if (
+            filter.startDate() != null
+                && filter.endDate() != null
+                && filter.startDate().isAfter(filter.endDate())
+        ) {
+            throw new IllegalArgumentException(
+                "A data inicial não pode ser posterior à data final."
+            );
+        }
+    }
+
+    private String normalizeFilter(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return value.trim();
     }
 }

@@ -1,13 +1,16 @@
 package event_catalog_service.services.dataHandler.event;
 
 import event_catalog_service.dtos.query.EventDetailsProjection;
+import event_catalog_service.dtos.query.EventSummaryProjection;
 import event_catalog_service.dtos.res.EventDetailsResponseDTO;
 import event_catalog_service.dtos.res.EventSectorDetailsDTO;
+import event_catalog_service.dtos.res.EventSummaryResponseDTO;
 import event_catalog_service.dtos.res.SectorPricingResponseDTO;
 import event_catalog_service.entities.Event;
 import event_catalog_service.entities.EventSectorPricing;
 import event_catalog_service.entities.Sector;
 import event_catalog_service.entities.Venue;
+import event_catalog_service.entities.enums.EventStatusEnum;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -56,6 +59,20 @@ public class EventMapper {
             event.getVenueCity(),
             event.getVenueState(),
             sectorDetails
+        );
+    }
+
+    public EventSummaryResponseDTO toEventSummaryResponseDTO(
+        EventSummaryProjection projection
+    ) {
+        return new EventSummaryResponseDTO(
+            projection.getEventId(),
+            projection.getTitle(),
+            projection.getEventDate(),
+            EventStatusEnum.valueOf(projection.getStatus()),
+            projection.getVenueName(),
+            projection.getVenueCity(),
+            projection.getVenueState()
         );
     }
 }

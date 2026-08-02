@@ -1,16 +1,40 @@
 package event_catalog_service.controllers.contracts;
 
 import event_catalog_service.dtos.req.CreateEventRequestDTO;
+import event_catalog_service.dtos.req.EventFilterRequestDTO;
 import event_catalog_service.dtos.req.SectorPricingRequestDTO;
+import event_catalog_service.dtos.req.SectorsTicketPriceRequestDTO;
 import event_catalog_service.dtos.res.EventDetailsResponseDTO;
+import event_catalog_service.dtos.res.EventSectorPriceResponseDTO;
+import event_catalog_service.dtos.res.EventSummaryResponseDTO;
 import event_catalog_service.dtos.res.SectorPricingResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestBody;
+
+import java.util.List;
 
 @Tag(name = "Event Catalog Endpoint", description = "Gerenciamento do catálogo de eventos e configuração de setores/preços")
 public interface EventCatalogContract {
+    @Operation(
+        summary = "Buscar eventos",
+        description = """
+            Retorna uma lista paginada de eventos.
+            
+            Todos os filtros são opcionais. A pesquisa textual é realizada
+            sobre o título do evento.
+            """
+    )
+    ResponseEntity<Page<EventSummaryResponseDTO>> findEvents(
+        @ParameterObject EventFilterRequestDTO filter,
+        @ParameterObject Pageable pageable
+    );
 
     @Operation(summary = "Buscar os detalhes completos de um evento através do seu ID")
     ResponseEntity<EventDetailsResponseDTO> findEventById(
@@ -39,4 +63,9 @@ public interface EventCatalogContract {
         @Parameter(description = "ID do setor")
         String secId
     );
+
+    @Operation(
+        summary = "Consultar os preços dos setores de um evento"
+    )
+    ResponseEntity<List<EventSectorPriceResponseDTO>> consultTicketsPrice(@Valid @RequestBody SectorsTicketPriceRequestDTO sectorsTicketPriceRequestDTO);
 }

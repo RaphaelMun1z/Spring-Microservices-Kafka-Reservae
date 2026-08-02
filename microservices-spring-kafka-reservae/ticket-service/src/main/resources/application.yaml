@@ -18,6 +18,8 @@ reservae:
       topics:
         pedido-confirmado: reservae.order.confirmed.v1
         ingresso-gerado: reservae.ticket.generated.v1
+  security:
+    required-audience: reservae-api
 
 springdoc:
   api-docs:

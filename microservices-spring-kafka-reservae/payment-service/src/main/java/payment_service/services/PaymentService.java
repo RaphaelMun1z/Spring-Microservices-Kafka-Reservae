@@ -3,6 +3,7 @@ package payment_service.services;
 import org.springframework.stereotype.Service;
 import payment_service.dtos.req.ProductRequestDTO;
 import payment_service.dtos.res.PaymentSessionResponseDTO;
+import payment_service.exceptions.models.BusinessException;
 import payment_service.gateways.PaymentGateway;
 import payment_service.gateways.model.PaymentSessionItemRequest;
 import payment_service.gateways.model.PaymentSessionRequest;
@@ -13,6 +14,9 @@ import payment_service.messaging.event.PaymentSessionCreatedEvent;
 import payment_service.messaging.mapper.PaymentEventMapper;
 import payment_service.messaging.publisher.PaymentFailedPublisher;
 import payment_service.messaging.publisher.PaymentSessionCreatedPublisher;
+import payment_service.proxy.order.OrderProxy;
+import payment_service.proxy.order.dtos.OrderResponseDTO;
+import payment_service.proxy.order.dtos.OrderStatusEnum;
 
 import java.time.Instant;
 import java.util.List;
@@ -23,32 +27,51 @@ public class PaymentService {
     private final PaymentEventMapper paymentEventMapper;
     private final PaymentSessionCreatedPublisher paymentSessionCreatedPublisher;
     private final PaymentFailedPublisher paymentFailedPublisher;
+    private final OrderProxy orderProxy;
 
     public PaymentService(
         PaymentGateway paymentGateway,
         PaymentEventMapper paymentEventMapper,
         PaymentSessionCreatedPublisher paymentSessionCreatedPublisher,
-        PaymentFailedPublisher paymentFailedPublisher
+        PaymentFailedPublisher paymentFailedPublisher,
+        OrderProxy orderProxy
     ) {
         this.paymentGateway = paymentGateway;
         this.paymentEventMapper = paymentEventMapper;
         this.paymentSessionCreatedPublisher = paymentSessionCreatedPublisher;
         this.paymentFailedPublisher = paymentFailedPublisher;
+        this.orderProxy = orderProxy;
     }
 
     public PaymentSessionResponseDTO createPaymentSession(ProductRequestDTO request) {
         validateRequest(request);
 
+        // Validar se pedido existe
+        OrderResponseDTO orderFound = orderProxy.validateAndGetOrder(request.orderId());
+        if (orderFound.status() != OrderStatusEnum.AWAITING_PAYMENT) {
+            throw new BusinessException("Não é possível criar uma sessão de pagamento para um pedido que não esteja aguardando pagamento.");
+        }
+
+        // Validar se pedido é do usuário
+        if (!orderFound.userId().equals(request.userId())) {
+            throw new BusinessException("O pedido não pertence ao usuário informado.");
+        }
+
+        List<PaymentSessionItemRequest> orderItems = orderFound.itens().stream().map(
+            item -> new PaymentSessionItemRequest(
+                "Ingresso",
+                item.appliedPrice()
+                    .movePointRight(2)
+                    .longValueExact(),
+                (long) item.quantity()
+            )).toList();
+
         PaymentSessionRequest paymentSessionRequest = new PaymentSessionRequest(
             request.orderId(),
             request.userId(),
-            request.currency(),
-            request.customerEmail(),
-            List.of(new PaymentSessionItemRequest(
-                request.name(),
-                request.amount(),
-                request.quantity()
-            ))
+            "BRL",
+            "emaildocliente@gmail.com",
+            orderItems
         );
 
         return paymentGateway.createPaymentSession(paymentSessionRequest);
@@ -98,30 +121,6 @@ public class PaymentService {
         if (request.userId() == null || request.userId().isBlank()) {
             throw new IllegalArgumentException(
                 "O identificador do usuário é obrigatório."
-            );
-        }
-
-        if (request.amount() == null || request.amount() <= 0) {
-            throw new IllegalArgumentException(
-                "O valor do pagamento deve ser maior que zero."
-            );
-        }
-
-        if (request.quantity() == null || request.quantity() <= 0) {
-            throw new IllegalArgumentException(
-                "A quantidade deve ser maior que zero."
-            );
-        }
-
-        if (request.name() == null || request.name().isBlank()) {
-            throw new IllegalArgumentException(
-                "O nome do produto é obrigatório."
-            );
-        }
-
-        if (request.currency() == null || request.currency().isBlank()) {
-            throw new IllegalArgumentException(
-                "A moeda é obrigatória."
             );
         }
     }

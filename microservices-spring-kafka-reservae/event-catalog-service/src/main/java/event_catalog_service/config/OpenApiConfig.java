@@ -19,7 +19,7 @@ public class OpenApiConfig {
             .components(new Components())
             .info(new io.swagger.v3.oas.models.info.Info()
                 .title("Event Catalog Microservice API")
-                .version("v1.0.0")
+                .version("v1.2.0")
                 .license(
                     new License()
                         .name("Apache 2.0")

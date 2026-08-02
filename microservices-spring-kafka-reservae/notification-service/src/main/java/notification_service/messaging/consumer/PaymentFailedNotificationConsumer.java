@@ -19,6 +19,6 @@ public class PaymentFailedNotificationConsumer {
         containerFactory = "paymentFailedNotificationKafkaListenerContainerFactory"
     )
     public void consume(PaymentFailedNotificationRequestedEvent event) {
-        notificationService.enviarPagamentoRecusado(event);
+        notificationService.sendPaymentFailedEmail(event);
     }
 }

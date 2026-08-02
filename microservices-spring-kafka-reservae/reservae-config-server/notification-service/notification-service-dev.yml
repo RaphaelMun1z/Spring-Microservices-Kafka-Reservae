@@ -2,3 +2,9 @@ spring:
   data:
     mongodb:
       uri: mongodb://localhost:27017/db_notification
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${RESERVAE_KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/reservae}

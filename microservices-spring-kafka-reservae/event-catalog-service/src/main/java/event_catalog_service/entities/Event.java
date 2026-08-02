@@ -14,11 +14,37 @@ import java.util.List;
 
 
 @Entity
-@Table(name = "tb_events", uniqueConstraints = {
-    @UniqueConstraint(
-        columnNames = {"title", "event_date", "venue_id"}
-    )
-})
+@Table(
+    name = "tb_events",
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uk_event_title_date_venue",
+            columnNames = {
+                "title",
+                "event_date",
+                "venue_id"
+            }
+        )
+    },
+    indexes = {
+        @Index(
+            name = "idx_events_event_date",
+            columnList = "event_date"
+        ),
+        @Index(
+            name = "idx_events_status",
+            columnList = "status"
+        ),
+        @Index(
+            name = "idx_events_venue_id",
+            columnList = "venue_id"
+        ),
+        @Index(
+            name = "idx_events_status_event_date",
+            columnList = "status, event_date"
+        )
+    }
+)
 public class Event {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

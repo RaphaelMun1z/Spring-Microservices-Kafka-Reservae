@@ -2,6 +2,7 @@ package ticket_service.entities;
 
 import jakarta.persistence.*;
 import ticket_service.entities.enums.TicketStatusEnum;
+import ticket_service.exceptions.models.BusinessException;
 
 import java.time.LocalDateTime;
 
@@ -114,7 +115,11 @@ public class Ticket {
 
     public void revokeTicket() {
         if (TicketStatusEnum.USED.equals(this.status)) {
-            throw new IllegalStateException("Ingresso já utilizado não pode ser revogado.");
+            throw new BusinessException("Ingresso já utilizado não pode ser revogado.");
+        }
+
+        if (TicketStatusEnum.REVOKED.equals(this.status)) {
+            throw new BusinessException("Ingresso já está revogado.");
         }
 
         this.status = TicketStatusEnum.REVOKED;

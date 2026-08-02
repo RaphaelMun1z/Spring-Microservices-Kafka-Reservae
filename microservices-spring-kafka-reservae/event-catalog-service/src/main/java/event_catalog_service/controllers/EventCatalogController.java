@@ -2,13 +2,19 @@ package event_catalog_service.controllers;
 
 import event_catalog_service.controllers.contracts.EventCatalogContract;
 import event_catalog_service.dtos.req.CreateEventRequestDTO;
+import event_catalog_service.dtos.req.EventFilterRequestDTO;
 import event_catalog_service.dtos.req.SectorPricingRequestDTO;
 import event_catalog_service.dtos.req.SectorsTicketPriceRequestDTO;
 import event_catalog_service.dtos.res.EventDetailsResponseDTO;
 import event_catalog_service.dtos.res.EventSectorPriceResponseDTO;
+import event_catalog_service.dtos.res.EventSummaryResponseDTO;
 import event_catalog_service.dtos.res.SectorPricingResponseDTO;
 import event_catalog_service.services.EventCatalogService;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +27,20 @@ public class EventCatalogController implements EventCatalogContract {
 
     public EventCatalogController(EventCatalogService eventCatalogService) {
         this.eventCatalogService = eventCatalogService;
+    }
+
+    @Override
+    @GetMapping("/v1")
+    public ResponseEntity<Page<EventSummaryResponseDTO>> findEvents(
+        @ParameterObject @ModelAttribute EventFilterRequestDTO filter,
+        @ParameterObject @PageableDefault(size = 12) Pageable pageable
+    ) {
+        return ResponseEntity.ok(
+            eventCatalogService.findEventsFiltered(
+                filter,
+                pageable
+            )
+        );
     }
 
     @Override
