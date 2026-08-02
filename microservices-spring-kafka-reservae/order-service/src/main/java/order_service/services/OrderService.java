@@ -20,10 +20,10 @@ import order_service.messaging.publisher.OrderConfirmedPublisher;
 import order_service.messaging.publisher.PaymentConfirmedNotificationPublisher;
 import order_service.messaging.publisher.PaymentFailedNotificationPublisher;
 import order_service.messaging.publisher.PaymentPendingNotificationPublisher;
-import order_service.proxy.eventCatalog.EventCatalogProxy;
 import order_service.proxy.eventCatalog.dto.EventDetailsResponseDTO;
 import order_service.proxy.eventCatalog.dto.EventSectorDetailsDTO;
 import order_service.proxy.eventCatalog.dto.SectorPricingResponseDTO;
+import order_service.proxy.event_catalog.EventCatalogProxy;
 import order_service.repositories.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,7 +86,19 @@ public class OrderService {
     @Transactional
     public OrderSummaryResponseDTO processCheckout(CheckoutRequestDTO request) {
         if (request.items() == null || request.items().isEmpty()) {
-            throw new BusinessException("O pedido deve possuir ao menos um item.");
+            throw new BusinessException(
+                "O pedido deve possuir ao menos um item."
+            );
+        }
+
+        boolean hasInvalidQuantity = request.items()
+            .stream()
+            .anyMatch(item -> item.quantity() <= 0);
+
+        if (hasInvalidQuantity) {
+            throw new BusinessException(
+                "A quantidade de cada item deve ser maior que zero."
+            );
         }
 
         List<String> sectorsId = request.items()
@@ -95,14 +107,18 @@ public class OrderService {
             .distinct()
             .toList();
 
-        List<SectorPricingResponseDTO> sectorsPrices = eventCatalogProxy.consultTicketPrices(request.eventId(), sectorsId);
+        List<SectorPricingResponseDTO> sectorsPrices =
+            eventCatalogProxy.consultTicketPrices(
+                request.eventId(),
+                sectorsId
+            );
 
-        Map<String, SectorPricingResponseDTO> pricesBySectorId = sectorsPrices
-            .stream()
-            .collect(Collectors.toMap(
-                SectorPricingResponseDTO::sectorId,
-                Function.identity()
-            ));
+        Map<String, SectorPricingResponseDTO> pricesBySectorId =
+            sectorsPrices.stream()
+                .collect(Collectors.toMap(
+                    SectorPricingResponseDTO::sectorId,
+                    Function.identity()
+                ));
 
         List<OrderItem> newOrderItems = request.items()
             .stream()
@@ -119,10 +135,12 @@ public class OrderService {
         );
 
         newOrder.addItems(newOrderItems);
+
         Order savedOrder = orderRepository.save(newOrder);
 
         OrderReservationRequestedEvent event =
             orderEventMapper.toReservationRequestedEvent(savedOrder);
+
         applicationEventPublisher.publishEvent(event);
 
         logger.info(
@@ -468,7 +486,10 @@ public class OrderService {
         OrderItemRequestDTO item,
         Map<String, SectorPricingResponseDTO> pricesBySectorId
     ) {
-        BigDecimal appliedPrice = resolveAppliedPrice(item, pricesBySectorId);
+        BigDecimal appliedPrice = resolveAppliedPrice(
+            item,
+            pricesBySectorId
+        );
 
         return new OrderItem(
             item.sectorId(),
@@ -482,16 +503,29 @@ public class OrderService {
         OrderItemRequestDTO item,
         Map<String, SectorPricingResponseDTO> pricesBySectorId
     ) {
-        SectorPricingResponseDTO pricing = pricesBySectorId.get(item.sectorId());
+        SectorPricingResponseDTO pricing =
+            pricesBySectorId.get(item.sectorId());
 
         if (pricing == null) {
-            throw new NotFoundException("Preço não encontrado para o setor informado.");
+            throw new NotFoundException(
+                "Preço não encontrado para o setor informado: "
+                    + item.sectorId()
+            );
         }
 
-        return switch (item.ticketType()) {
+        BigDecimal appliedPrice = switch (item.ticketType()) {
             case FULL_TICKET_PRICE -> pricing.basePrice();
             case HALF_TICKET_PRICE -> pricing.halfPrice();
         };
+
+        if (appliedPrice == null) {
+            throw new BusinessException(
+                "Preço não configurado para o tipo de ingresso informado: "
+                    + item.ticketType()
+            );
+        }
+
+        return appliedPrice;
     }
 
     private BigDecimal calculateTotalAmount(List<OrderItem> items) {

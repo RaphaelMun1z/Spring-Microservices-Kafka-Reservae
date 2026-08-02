@@ -3,16 +3,20 @@ package event_catalog_service.controllers.contracts;
 import event_catalog_service.dtos.req.CreateEventRequestDTO;
 import event_catalog_service.dtos.req.EventFilterRequestDTO;
 import event_catalog_service.dtos.req.SectorPricingRequestDTO;
+import event_catalog_service.dtos.req.SectorsTicketPriceRequestDTO;
 import event_catalog_service.dtos.res.EventDetailsResponseDTO;
+import event_catalog_service.dtos.res.EventSectorPriceResponseDTO;
 import event_catalog_service.dtos.res.EventSummaryResponseDTO;
 import event_catalog_service.dtos.res.SectorPricingResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 
@@ -63,10 +67,5 @@ public interface EventCatalogContract {
     @Operation(
         summary = "Consultar os preços dos setores de um evento"
     )
-    ResponseEntity<List<SectorPricingResponseDTO>> consultTicketPrices(
-        @Parameter(description = "ID do evento")
-        String eventId,
-
-        List<String> sectorsId
-    );
+    ResponseEntity<List<EventSectorPriceResponseDTO>> consultTicketsPrice(@Valid @RequestBody SectorsTicketPriceRequestDTO sectorsTicketPriceRequestDTO);
 }

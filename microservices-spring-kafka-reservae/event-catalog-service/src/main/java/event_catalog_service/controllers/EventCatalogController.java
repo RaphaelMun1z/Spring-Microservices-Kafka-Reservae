@@ -4,7 +4,9 @@ import event_catalog_service.controllers.contracts.EventCatalogContract;
 import event_catalog_service.dtos.req.CreateEventRequestDTO;
 import event_catalog_service.dtos.req.EventFilterRequestDTO;
 import event_catalog_service.dtos.req.SectorPricingRequestDTO;
+import event_catalog_service.dtos.req.SectorsTicketPriceRequestDTO;
 import event_catalog_service.dtos.res.EventDetailsResponseDTO;
+import event_catalog_service.dtos.res.EventSectorPriceResponseDTO;
 import event_catalog_service.dtos.res.EventSummaryResponseDTO;
 import event_catalog_service.dtos.res.SectorPricingResponseDTO;
 import event_catalog_service.services.EventCatalogService;
@@ -78,12 +80,10 @@ public class EventCatalogController implements EventCatalogContract {
         return ResponseEntity.noContent().build();
     }
 
-    @Override
-    @PostMapping("/v1/{eventId}/sectors/prices")
-    public ResponseEntity<List<SectorPricingResponseDTO>> consultTicketPrices(
-        @PathVariable String eventId,
-        @RequestBody List<String> sectorsId
+    @PostMapping("/v1/tickets/price")
+    public ResponseEntity<List<EventSectorPriceResponseDTO>> consultTicketsPrice(
+        @Valid @RequestBody SectorsTicketPriceRequestDTO sectorsTicketPriceRequestDTO
     ) {
-        return ResponseEntity.ok(eventCatalogService.consultSectorsTicketPrices(eventId, sectorsId));
+        return ResponseEntity.ok(eventCatalogService.consultTicketsPrice(sectorsTicketPriceRequestDTO));
     }
 }
